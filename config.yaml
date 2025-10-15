@@ -1,0 +1,13 @@
+alignment: "data/aligned.fasta"
+metadata: "data/metadata.tsv"
+reference: "data/ref.fasta"
+reference_full: "/scicore/home/neher/kuznet0001/hiv_analysis/data/HXB2_full_genome.fasta"
+reference_ann: "data/annotation.gb"
+tree_method: "fasttree"
+# 'fasttree' or 'iqtree'
+tree_args: ""
+# --tree-builder-args '-m GTR+I+R10 -ninit 10 -n 4 -czb'
+genes: "data/pol.gff"
+subset_n: 100
+threads: 32
+sequences: '/scicore/home/neher/kuznet0001/hiv_analysis/data/hiv-db.fasta'
