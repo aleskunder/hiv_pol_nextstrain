@@ -1,0 +1,67 @@
+{
+    "title": "Genomic epidemiology of HIV Pol",
+    "maintainers": [
+        {
+            "name": "Nextstrain team",
+            "url": "http://nextstrain.org"
+        }
+    ],
+    "data_provenance": [
+        {
+            "name": "GenBank",
+            "url": "https://www.ncbi.nlm.nih.gov/genbank/"
+        },
+        {
+            "name": "Pathoplexus",
+            "url": "https://pathoplexus.org"
+        }
+    ],
+    "build_url": "https://github.com/placeholder/hiv-analysis",
+    "colorings": [
+        {
+            "key": "gt",
+            "title": "Genotype",
+            "type": "categorical"
+        },
+        {
+            "key": "year",
+            "title": "Date",
+            "type": "continuous"
+        },
+        {
+            "key": "country",
+            "title": "Country",
+            "type": "categorical"
+        },
+        {
+            "key": "region",
+            "title": "Region",
+            "type": "categorical"
+        },
+        {
+            "key": "subtype",
+            "title": "Parsed Subtype",
+            "type": "categorical"
+        }
+    ],
+    "geo_resolutions": [
+        "country",
+        "region"
+    ],
+    "panels": [
+        "tree",
+        "map",
+        "entropy",
+        "frequencies"
+    ],
+    "display_defaults": {
+        "map_triplicate": true,
+        "color_by": "subtype",
+        "transmission_lines": false
+    },
+    "filters": [
+        "country",
+        "region",
+        "subtype"
+    ]
+}
