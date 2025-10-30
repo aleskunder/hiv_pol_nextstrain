@@ -1,70 +1,104 @@
 configfile: "config.yaml"
 
+RESULTS = config.get("results_dir", "results")
+AUSPICE = config.get("auspice_dir", "auspice")
 
 rule all:
     input:
-        "auspice/hiv_pol.json",
+        f"{AUSPICE}/hiv_pol.json",
 
 
-rule subset:
-    input:
-        sequences=config["sequences"],
+if config.get("subset_n", 0):
+
+    rule subset:
+        input:
+            sequences=config["sequences"],
+        output:
+            f"{RESULTS}/subset.fasta",
+        params:
+            n=config["subset_n"],
+        shell:
+            """
+            seqkit sample -n {params.n} {input.sequences} > {output}
+            """
+    seq_input = rules.subset.output
+
+else:
+    seq_input = config["sequences"]
+
+
+rule download_dataset:
     output:
-        "results/subset.fasta",
+        dataset="/scicore/home/neher/kuznet0001/hiv_analysis/data/nextclade_hiv_ds"
     params:
-        n=config["subset_n"],
+        dataset_path=config["nextclade_dataset_path"],
     shell:
         """
-        seqkit sample -n {params.n} {input.sequences} > {output}
+        nextclade3 dataset get --name {params.dataset_path} --output-dir {output.dataset}
         """
-
 
 rule align:
     input:
-        sequences=rules.subset.output,
-        reference=config["reference"],
-        annotation=config["reference_ann"],
+        sequences=seq_input,
+        dataset=rules.download_dataset.output.dataset,
     output:
-        alignment="results/aligned.fasta",
-        tsv="results/nextclade.tsv",
-        translation=expand("results/translations/gene.{gene}.fasta", gene="pol"),
+        alignment=f"{RESULTS}/aligned.fasta",
+        tsv=f"{RESULTS}/nextclade.tsv",
+        translations=directory(f"{RESULTS}/translations"),
     params:
-        template_string=lambda w: "results/translations/gene.{gene}.fasta",
+        genes=config["cds"],
+    threads: config["threads"]
     shell:
         """
-        nextclade3 run \
+        nextclade3 run -j {threads}\
             {input.sequences} \
-            --input-ref {input.reference} \
-            --input-annotation {input.annotation} \
+            -D {input.dataset} \
             --output-fasta {output.alignment} \
             --output-tsv {output.tsv} \
-            --output-translations 'results/translations/gene.{{cds}}.fasta' \
-            --min-seed-cover 0.2 \
+            --min-seed-cover 0.27 \
+            --output-translations "{output.translations}/{{cds}}.fasta" \
             --include-reference
         """
 
+rule mask:
+    input:
+        aln=rules.align.output.alignment,
+    output:
+        masked=f"{RESULTS}/aligned_masked.fasta",
+    shell:
+        """
+        augur mask \
+          --sequences {input.aln} \
+          --mask-from-beginning 1798 \
+          --mask-from-end 4542 \
+          --output {output.masked}
+        """
 
-# rule subset:
-#     input:
-#         aln=config["alignment"]
-#     output:
-#         "results/subset.fasta",
-#     params:
-#         n=config["subset_n"],
-#     shell:
-#         """
-#         seqkit sample -n {params.n} {input.aln} > {output}
-#         """
+rule filter:
+    input:
+        aln=rules.mask.output.masked,
+        meta=rules.align.output.tsv,
+    output:
+        filtered=f"{RESULTS}/aligned_filtered.fasta",
+    shell:
+        """
+        augur filter \
+          --sequences {input.aln} \
+          --metadata {input.meta} \
+          --metadata-id-columns seqName \
+          --exclude-where 'qc.overallStatus=bad' 'qc.overallStatus=mediocre' \
+          --output-sequences {output.filtered} \
+        """
 
 
 rule tree:
     input:
-        aln=rules.align.output.alignment,
+        aln=rules.filter.output.filtered,
     params:
         method=config["tree_method"],
         args=config["tree_args"],
     output:
-        tree="results/tree_raw.nwk",
+        tree=f"{RESULTS}/tree_raw.nwk",
     threads: config["threads"]
     shell:
         """
@@ -79,11 +113,11 @@ rule tree:
 rule refine_tree:
     input:
         tree=rules.tree.output.tree,
-        aln=rules.align.output.alignment,
+        aln=rules.filter.output.filtered,
         meta=config["metadata"],
     output:
-        tree="results/augur/hiv_refined.nwk",
-        node_data="results/augur/hiv_node_data.json",
+        tree=f"{RESULTS}/augur/hiv_refined.nwk",
+        node_data=f"{RESULTS}/augur/hiv_node_data.json",
     shell:
         """
         augur refine \
@@ -100,40 +134,23 @@ rule refine_tree:
 rule ancestral:
     input:
         tree=rules.refine_tree.output.tree,
-        aln=rules.align.output.alignment,
-        translation=expand("results/translations/gene.{gene}.fasta", gene="pol"),
+        aln=rules.filter.output.filtered,
     params:
         annotation=config["reference_ann"],
-        translation="results/translations/gene.%GENE.fasta",
+        input_translations=f"{RESULTS}/translations/%GENE.fasta",
+        genes=config["cds"],
     output:
-        "results/augur/muts.json",
+        f"{RESULTS}/augur/muts.json",
     shell:
         """
         augur ancestral \
           --tree {input.tree} \
           --alignment {input.aln} \
           --annotation {params.annotation} \
-          --translations {params.translation} \
-          --genes pol \
+          --translations {params.input_translations} \
+          --genes {params.genes} \
           --output-node-data {output}
         """
-
-
-# rule translate:
-#     input:
-#         tree=rules.refine_tree.output.tree,
-#         node_data=rules.ancestral.output,
-#         reference=config["reference_ann"],
-#     output:
-#         "results/aa_muts.json",
-#     shell:
-#         """
-#         augur translate \
-#             --tree {input.tree} \
-#             --ancestral-sequences {input.node_data} \
-#             --reference-sequence {input.reference} \
-#             --output-node-data {output} \
-#         """
 
 
 rule export:
@@ -142,8 +159,9 @@ rule export:
         metadata=config["metadata"],
         branch_lengths=rules.refine_tree.output.node_data,
         ancestral=rules.ancestral.output,
+        auspice_config=config["auspice_config"],
     output:
-        "auspice/hiv_pol.json",
+        f"{AUSPICE}/hiv_pol.json",
     shell:
         """
         augur export v2 \
@@ -151,10 +169,11 @@ rule export:
             --metadata {input.metadata} \
             --node-data {input.branch_lengths} {input.ancestral}\
             --metadata-id-columns accession \
+            --auspice-config {input.auspice_config} \
             --output {output}
         """
 
 
 rule club:
     shell:
-        "rm -rf results/* auspice/*"
+        f"rm -rf {RESULTS}/* {AUSPICE}/*"
