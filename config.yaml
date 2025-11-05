@@ -1,17 +1,15 @@
-alignment: "data/aligned.fasta"
+sequences: '/scicore/home/neher/kuznet0001/hiv_analysis/data/hiv-db.fasta'
 metadata: "data/metadata.tsv"
+nextclade_dataset_path: "community/neherlab/hiv-1/hxb2"
 reference: "data/ref.fasta"
-reference_full: "/scicore/home/neher/kuznet0001/hiv_analysis/data/HXB2_full_genome.fasta"
 reference_ann: "/scicore/home/neher/kuznet0001/hiv_analysis/hiv_pipeline/data/genome_annotation.gff3"
+auspice_config: "data/auspice_config.json"
 tree_method: "fasttree"
 # 'fasttree' or 'iqtree'
 tree_args: ""
 # --tree-builder-args '-m GTR+I+R10 -ninit 10 -n 4 -czb'
-subset_n: 5000 # 0 means no subsampling
+subset_n: 10 # 0 means no subsampling
 threads: 32
-sequences: '/scicore/home/neher/kuznet0001/hiv_analysis/data/hiv-db.fasta'
-nextclade_dataset_path: "community/neherlab/hiv-1/hxb2"
-cds: ["pro","RT-p66", "INT"]
+cds: ["pol"]
 results_dir: "results_subset"
 auspice_dir: "auspice_subset"
-auspice_config: "data/auspice_config.json"

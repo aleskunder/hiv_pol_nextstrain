@@ -60,23 +60,35 @@ rule align:
             --include-reference
         """
 
-rule mask:
+# rule mask:
+#     input:
+#         aln=rules.align.output.alignment,
+#     output:
+#         masked=f"{RESULTS}/aligned_masked.fasta",
+#     shell:
+#         """
+#         augur mask \
+#           --sequences {input.aln} \
+#           --mask-from-beginning 1798 \
+#           --mask-from-end 4542 \
+#           --output {output.masked}
+#         """
+
+rule extract_pol:
     input:
         aln=rules.align.output.alignment,
     output:
-        masked=f"{RESULTS}/aligned_masked.fasta",
+        pol=f"{RESULTS}/aligned_pol.fasta",
     shell:
         """
-        augur mask \
-          --sequences {input.aln} \
-          --mask-from-beginning 1798 \
-          --mask-from-end 4542 \
-          --output {output.masked}
+        seqkit subseq --region 1799:4639 {input.aln} > {output.pol}
         """
+
+
 
 rule filter:
     input:
-        aln=rules.mask.output.masked,
+        aln=rules.extract_pol.output.pol,
         meta=rules.align.output.tsv,
     output:
         filtered=f"{RESULTS}/aligned_filtered.fasta",
@@ -86,7 +98,8 @@ rule filter:
           --sequences {input.aln} \
           --metadata {input.meta} \
           --metadata-id-columns seqName \
-          --exclude-where 'qc.overallStatus=bad' 'qc.overallStatus=mediocre' \
+          --exclude-where 'qc.overallStatus=bad' 'qc.overallStatus=mediocre'\
+          --min-length 2500 \
           --output-sequences {output.filtered} \
         """
 

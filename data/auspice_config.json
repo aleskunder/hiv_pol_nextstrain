@@ -8,12 +8,8 @@
     ],
     "data_provenance": [
         {
-            "name": "GenBank",
-            "url": "https://www.ncbi.nlm.nih.gov/genbank/"
-        },
-        {
-            "name": "Pathoplexus",
-            "url": "https://pathoplexus.org"
+            "name": "LANL's HIV Database",
+            "url": "https://www.hiv.lanl.gov"
         }
     ],
     "build_url": "https://github.com/placeholder/hiv-analysis",
@@ -56,7 +52,7 @@
     ],
     "display_defaults": {
         "map_triplicate": true,
-        "color_by": "subtype",
+        "color_by": "region",
         "transmission_lines": false
     },
     "filters": [
