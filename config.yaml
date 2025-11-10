@@ -8,8 +8,8 @@ tree_method: "fasttree"
 # 'fasttree' or 'iqtree'
 tree_args: ""
 # --tree-builder-args '-m GTR+I+R10 -ninit 10 -n 4 -czb'
-subset_n: 10 # 0 means no subsampling
+subset_n: 0 # 0 means no subsampling
 threads: 32
 cds: ["pol"]
-results_dir: "results_subset"
-auspice_dir: "auspice_subset"
+results_dir: "results_051125"
+auspice_dir: "auspice_051125"

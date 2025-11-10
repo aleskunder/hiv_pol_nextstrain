@@ -17,9 +17,10 @@ if config.get("subset_n", 0):
             f"{RESULTS}/subset.fasta",
         params:
             n=config["subset_n"],
+            seed=42, # for debugging purposes
         shell:
             """
-            seqkit sample -n {params.n} {input.sequences} > {output}
+            seqkit sample -n {params.n} {input.sequences} -s {params.seed} > {output}
             """
     seq_input = rules.subset.output
 
@@ -44,7 +45,6 @@ rule align:
     output:
         alignment=f"{RESULTS}/aligned.fasta",
         tsv=f"{RESULTS}/nextclade.tsv",
-        translations=directory(f"{RESULTS}/translations"),
     params:
         genes=config["cds"],
     threads: config["threads"]
@@ -56,7 +56,6 @@ rule align:
             --output-fasta {output.alignment} \
             --output-tsv {output.tsv} \
             --min-seed-cover 0.27 \
-            --output-translations "{output.translations}/{{cds}}.fasta" \
             --include-reference
         """
 
@@ -143,26 +142,35 @@ rule refine_tree:
           --output-node-data {output.node_data}
         """
 
-
 rule ancestral:
     input:
         tree=rules.refine_tree.output.tree,
         aln=rules.filter.output.filtered,
-    params:
-        annotation=config["reference_ann"],
-        input_translations=f"{RESULTS}/translations/%GENE.fasta",
-        genes=config["cds"],
     output:
-        f"{RESULTS}/augur/muts.json",
+        f"{RESULTS}/augur/nt_muts.json",
     shell:
         """
         augur ancestral \
           --tree {input.tree} \
           --alignment {input.aln} \
-          --annotation {params.annotation} \
-          --translations {params.input_translations} \
-          --genes {params.genes} \
           --output-node-data {output}
+        """
+
+rule translate:
+    input:
+        tree = rules.refine_tree.output.tree,
+        node_data = rules.ancestral.output,
+        reference = config["reference_ann"],
+    output:
+        f"{RESULTS}/augur/aa_muts.json"
+    shell:
+        """
+        augur translate \
+            --tree {input.tree} \
+            --ancestral-sequences {input.node_data} \
+            --reference-sequence {input.reference} \
+            --output-node-data {output} \
+            --alignment-output {RESULTS}/aligned_aa_%GENE.fasta
         """
 
 
@@ -171,7 +179,8 @@ rule export:
         tree=rules.refine_tree.output.tree,
         metadata=config["metadata"],
         branch_lengths=rules.refine_tree.output.node_data,
-        ancestral=rules.ancestral.output,
+        nt_muts=rules.ancestral.output,
+        aa_muts=rules.translate.output,
         auspice_config=config["auspice_config"],
     output:
         f"{AUSPICE}/hiv_pol.json",
@@ -180,7 +189,7 @@ rule export:
         augur export v2 \
             --tree {input.tree} \
             --metadata {input.metadata} \
-            --node-data {input.branch_lengths} {input.ancestral}\
+            --node-data {input.branch_lengths} {input.nt_muts} {input.aa_muts} \
             --metadata-id-columns accession \
             --auspice-config {input.auspice_config} \
             --output {output}

@@ -12,7 +12,7 @@
             "url": "https://www.hiv.lanl.gov"
         }
     ],
-    "build_url": "https://github.com/placeholder/hiv-analysis",
+    "build_url": "https://github.com/aleskunder/hiv_pol_nextstrain",
     "colorings": [
         {
             "key": "gt",
